@@ -1,0 +1,8 @@
+<h2>Inscription</h2>
+<form (ngSubmit)="onSubmit()" #form="ngForm">
+  <input name="username" [(ngModel)]="user.username" placeholder="Nom d'utilisateur" required>
+  <input name="email" [(ngModel)]="user.email" placeholder="Email" required type="email">
+  <input name="password" [(ngModel)]="user.password" placeholder="Mot de passe" required type="password">
+  <button type="submit">S'inscrire</button>
+</form>
+<router-outlet></router-outlet>
