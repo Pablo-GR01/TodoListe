@@ -1,0 +1,82 @@
+<p>dashboard works!</p>
+<p>le user est connecté</p>
+
+<div class="p-5 max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+
+  <!-- Actions à gauche -->
+  <div class="space-y-6 md:col-span-1">
+    <header class="flex flex-col gap-2">
+      <h1 class="text-2xl font-bold text-gray-800">Bienvenue {{ username }}</h1>
+      <button (click)="logout()" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 w-max">Déconnexion</button>
+    </header>
+
+    <!-- Créer une tâche -->
+    <section>
+      <h2 class="font-semibold mb-2 text-gray-700">Créer une tâche</h2>
+      <form (ngSubmit)="createTask()" class="space-y-2">
+        <input [(ngModel)]="newTaskTitle" name="task" placeholder="Titre de la tâche" class="border px-4 py-2 rounded w-full" required />
+        <button type="submit" [disabled]="taskCreationLoading()" class="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-400">
+          {{ taskCreationLoading() ? 'Création...' : 'Créer tâche' }}
+        </button>
+      </form>
+      <div *ngIf="taskCreationError()" class="text-red-600 mt-2 text-sm">{{ taskCreationError() }}</div>
+    </section>
+
+    <!-- Modifier une tâche -->
+    <section>
+      <h2 class="font-semibold mt-4 mb-2 text-gray-700">Modifier une tâche</h2>
+      <select [(ngModel)]="selectedTask" name="selectedTask" class="w-full border px-3 py-2 rounded" (change)="editedTaskTitle = selectedTask?.title || ''">
+        <option *ngFor="let task of tasks" [ngValue]="task">{{ task.title }}</option>
+      </select>
+      <input [(ngModel)]="editedTaskTitle" name="editedTitle" placeholder="Nouveau titre" class="border px-4 py-2 rounded w-full mt-2" />
+      <button (click)="updateTask()" [disabled]="!selectedTask || !editedTaskTitle.trim()" class="w-full bg-blue-600 text-white px-4 py-2 mt-2 rounded hover:bg-blue-700 disabled:bg-gray-400">Modifier</button>
+    </section>
+
+    <!-- Supprimer une tâche -->
+    <section>
+      <h2 class="font-semibold mt-4 mb-2 text-gray-700">Supprimer une tâche</h2>
+      <select [(ngModel)]="taskToDelete" name="taskToDelete" class="w-full border px-3 py-2 rounded">
+        <option *ngFor="let task of tasks" [ngValue]="task">{{ task.title }}</option>
+      </select>
+      <button (click)="deleteTask()" [disabled]="!taskToDelete" class="w-full bg-red-600 text-white px-4 py-2 mt-2 rounded hover:bg-red-700 disabled:bg-gray-400">Supprimer</button>
+    </section>
+  </div>
+
+  <!-- Tableau à droite -->
+  <div class="md:col-span-2">
+    <div class="bg-white p-4 rounded shadow">
+      <h2 class="text-lg font-semibold mb-4 text-gray-700">Mes Tâches</h2>
+
+      <div *ngIf="tasks.length > 0; else noTasks" class="overflow-auto">
+        <table class="table-auto w-full text-sm">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="px-4 py-2 text-left">Titre</th>
+              <th class="px-4 py-2 text-left">Créée le</th>
+              <th class="px-4 py-2 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let task of tasks" class="border-t">
+              <td class="px-4 py-2">{{ task.title }}</td>
+              <td class="px-4 py-2">{{ task.created_at | date:'short' }}</td>
+              <td class="px-4 py-2 text-center flex justify-center gap-4">
+                <button (click)="selectTaskForEdit(task)" title="Modifier" class="text-blue-600 hover:text-blue-800" aria-label="Modifier tâche">
+                  ✏️
+                </button>
+                <button (click)="selectTaskForDelete(task)" title="Supprimer" class="text-red-600 hover:text-red-800" aria-label="Supprimer tâche">
+                  🗑️
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <ng-template #noTasks>
+        <div class="text-gray-500 text-sm mt-4">Aucune tâche trouvée.</div>
+      </ng-template>
+    </div>
+  </div>
+
+</div>

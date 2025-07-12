@@ -1,0 +1,49 @@
+<!-- Conteneur principal qui regroupe tout le formulaire de connexion -->
+<div class="min-h-screen flex items-center justify-center bg-gray-100 px-4">
+  <!-- Formulaire de connexion -->
+  <form (ngSubmit)="login()" class="bg-white p-8 rounded-lg shadow-md w-full max-w-md border-2 border-black">
+    
+    <!-- Titre affiché en haut du formulaire -->
+    <h2 class="text-2xl font-black text-center text-gray-800 mb-6">Connexion</h2>
+
+    <!-- Affichage du message d'erreur -->
+    @if (errorMessage()) {
+      <div class="bg-red-100 text-red-700 text-center p-3 rounded mb-4">
+        {{ errorMessage() }}
+      </div>
+    }
+
+    <!-- Champ de saisie pour l'email -->
+    <input
+      type="email"
+      [(ngModel)]="email"
+      name="email"
+      placeholder="Email"
+      required
+      class="w-full px-4 py-2 mb-4 border-2 border-black rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+    />
+
+    <!-- Champ de saisie pour le mot de passe -->
+    <input
+      type="password"
+      [(ngModel)]="password"
+      name="password"
+      placeholder="Mot de passe"
+      required
+      class="w-full px-4 py-2 mb-6 border-2 border-black rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+    />
+
+    <!-- Bouton de soumission -->
+    <button
+      type="submit"
+      [disabled]="loading()"
+      class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+    >
+      {{ loading() ? 'Connexion...' : 'Se connecter' }}
+    </button>
+
+
+
+    <a routerLink="/register"> S'inscrire</a>
+  </form>
+</div>
