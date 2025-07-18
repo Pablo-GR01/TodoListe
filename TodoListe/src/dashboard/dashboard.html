@@ -1,107 +1,64 @@
-<p class="text-gray-700 mb-6">dashboard works!</p>
-<p class="text-gray-700 mb-10">Le user est connecté</p>
-
 <section class="p-5 max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
 
-  <!-- Actions à gauche -->
   <div class="space-y-10 md:col-span-1 bg-white rounded-lg shadow-md p-8">
-
     <header class="flex flex-col gap-4">
       <h1 class="text-3xl font-extrabold text-gray-900">Bienvenue {{ username }}</h1>
-      <button
-        (click)="logout()"
+      <button (click)="logout()"
         class="self-start bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-lg transition shadow-md"
-        aria-label="Déconnexion"
-      >
-        Déconnexion
-      </button>
+        aria-label="Déconnexion">Déconnexion</button>
     </header>
 
-    <!-- Créer une tâche -->
     <section>
       <h2 class="text-xl font-semibold mb-6 text-gray-800 border-b border-gray-300 pb-3">Créer une tâche</h2>
-      <form (ngSubmit)="createTask()" class="space-y-5">
-        <input
-          [(ngModel)]="newTaskTitle"
-          name="task"
-          placeholder="Titre de la tâche"
+      <form (ngSubmit)="createTask()" class="space-y-5" #taskForm="ngForm">
+        <input [(ngModel)]="newTaskTitle" name="task" placeholder="Titre de la tâche"
           class="w-full border border-gray-300 rounded-lg px-5 py-3 focus:outline-none focus:ring-4 focus:ring-green-400 transition"
-          required
-          aria-label="Titre de la tâche"
-        />
-        <button
-          type="submit"
-          [disabled]="taskCreationLoading()"
-          class="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold px-5 py-3 rounded-lg transition shadow-md"
-        >
-          {{ taskCreationLoading() ? 'Création...' : 'Créer tâche' }}
+          required aria-label="Titre de la tâche" />
+        <button type="submit" [disabled]="taskCreationLoading || !taskForm.form.valid"
+          class="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold px-5 py-3 rounded-lg transition shadow-md">
+          {{ taskCreationLoading ? 'Création...' : 'Créer tâche' }}
         </button>
       </form>
-      <div *ngIf="taskCreationError()" class="text-red-600 mt-4 text-sm font-medium">{{ taskCreationError() }}</div>
+      <div *ngIf="taskCreationError" class="text-red-600 mt-4 text-sm font-medium">{{ taskCreationError }}</div>
     </section>
   </div>
 
-  <!-- Liste des tâches à droite -->
   <div class="md:col-span-2 bg-white rounded-lg shadow-md p-8 flex flex-col">
     <h3 class="text-2xl font-semibold mb-8 text-gray-900 border-b border-gray-300 pb-4">Liste des tâches</h3>
 
-    <ul class="list-disc list-inside space-y-4 max-h-[500px] overflow-y-auto">
-  <li
-  *ngFor="let task of tasks"
-  class="px-5 py-4 bg-gray-50 rounded-lg shadow-sm hover:bg-green-50 transition flex justify-between items-center"
->
-  <!-- Edition inline -->
-  <div *ngIf="editingTask?._id === task._id; else showTitle" class="flex gap-3 w-full items-center">
-    <input
-      [(ngModel)]="editedTaskTitle"
-      class="flex-grow border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-4 focus:ring-blue-400 transition"
-      placeholder="Modifier le titre"
-      aria-label="Modifier titre tâche"
-    />
-    <button
-      (click)="updateTask()"
-      [disabled]="taskUpdateLoading"
-      class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition shadow-md"
-      aria-label="Valider modification"
-    >
-      {{ taskUpdateLoading ? 'En cours...' : 'Valider' }}
-    </button>
-    <button
-      (click)="cancelEdit()"
-      class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg transition shadow-sm"
-      aria-label="Annuler modification"
-    >
-      Annuler
-    </button>
-  </div>
+    <ul class="space-y-4 max-h-[500px] overflow-y-auto">
+      <li *ngFor="let task of tasks" class="px-5 py-4 bg-gray-50 rounded-lg shadow-sm hover:bg-green-50 transition flex justify-between items-center">
 
-  <!-- Affichage normal -->
-  <ng-template #showTitle>
-    <div class="flex justify-between items-center w-full">
-      <span class="text-gray-800 font-medium">{{ task.title }}</span>
-      <div class="flex gap-4">
-        <button
-          (click)="startEdit(task)"
-          class="text-blue-600 hover:underline font-semibold"
-          aria-label="Modifier tâche"
-        >
-          Modifier
-        </button>
-        <button
-          (click)="deleteTask(task)"
-          class="text-red-600 hover:underline font-semibold"
-          aria-label="Supprimer tâche"
-        >
-          Supprimer
-        </button>
-      </div>
-    </div>
-  </ng-template>
-</li>
+        <div *ngIf="editingTask?.id === task.id; else showTitle" class="flex gap-3 w-full items-center">
+          <input [(ngModel)]="editedTaskTitle"
+            class="flex-grow border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-4 focus:ring-blue-400 transition"
+            placeholder="Modifier le titre" aria-label="Modifier titre tâche" />
+          <button (click)="updateTask()" [disabled]="taskUpdateLoading"
+            class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition shadow-md"
+            aria-label="Valider modification">
+            {{ taskUpdateLoading ? 'En cours...' : 'Valider' }}
+          </button>
+          <button (click)="cancelEdit()"
+            class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg transition shadow-sm"
+            aria-label="Annuler modification">
+            Annuler
+          </button>
+        </div>
 
-</ul>
+        <ng-template #showTitle>
+          <div class="flex justify-between items-center w-full">
+            <span class="text-gray-800 font-medium">{{ task.label }}</span>
+            <div class="flex gap-4">
+              <button (click)="startEdit(task)" class="text-blue-600 hover:underline font-semibold"
+                aria-label="Modifier tâche">Modifier</button>
+              <button (click)="deleteTask(task)" class="text-red-600 hover:underline font-semibold"
+                aria-label="Supprimer tâche">Supprimer</button>
+            </div>
+          </div>
+        </ng-template>
 
-
+      </li>
+    </ul>
   </div>
 
 </section>

@@ -1,60 +1,72 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
-import { CommonModule, JsonPipe } from '@angular/common';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Component, inject, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { AuthService } from '../auth-service/authservice';
 import { FormsModule } from '@angular/forms';
 
+interface Task {
+  id: string;
+  label: string;
+  done: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, JsonPipe],
+  imports: [CommonModule, FormsModule],
   templateUrl: './dashboard.html',
   styleUrls: ['./dashboard.css']
 })
 export class Dashboard implements OnInit {
-  private authService = inject(AuthService);
+  private auth = inject(AuthService);
   private http = inject(HttpClient);
   private router = inject(Router);
 
-  isLoggedIn = this.authService.isLoggedIn;
-  username: string = 'Utilisateur';
-
+  username = 'Utilisateur';
   newTaskTitle = '';
-  taskCreationError = signal('');
-  taskCreationLoading = signal(false);
-  tasks: any[] = [];
-
-  selectedTask: any = null;
+  taskCreationError = '';
   editedTaskTitle = '';
-  taskToDelete: any = null;
-
-  // Variables ajoutées pour la modification
-  editingTask: any = null;
+  editingTask: Task | null = null;
+  taskCreationLoading = false;
   taskUpdateLoading = false;
 
-  ngOnInit() {
-    this.loadData();
-    this.loadTasks();
-  }
+  tasks: Task[] = [];
+loadingTasks = true;  // <-- nouvelle variable
 
-  logout() {
-    this.authService.logout();
+ngOnInit() {
+  if (!this.auth.getToken()) {
     this.router.navigate(['/login']);
+    return;
   }
+  this.loadUserProfile();
+  this.loadTasks();
+}
 
-  loadData() {
-    const token = this.authService.getToken();
-    if (!token) {
-      this.username = 'Utilisateur'; // Pas connecté
-      return;
+loadTasks() {
+  this.loadingTasks = true;
+  const headers = this.auth.getAuthHeaders();
+  this.http.get<{ data: Task[] }>('https://todof.woopear.fr/api/v1/task', { headers }).subscribe({
+    next: (res) => {
+      this.tasks = Array.isArray(res.data) ? res.data : [];
+      this.loadingTasks = false;
+    },
+    error: (err) => {
+      console.error('Chargement tâches échoué', err);
+      this.tasks = [];
+      this.loadingTasks = false;
     }
+  });
+}
 
-    const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
 
-    this.http.get('https://todof.woopear.fr/api/v1/user/profil', { headers }).subscribe({
-      next: (response: any) => {
-        this.username = response.data?.username || 'Utilisateur';
+  loadUserProfile() {
+    this.auth.getUserProfile().subscribe({
+      next: (res: any) => {
+        const u = res.data;
+        this.username = u.username || u.email || 'Utilisateur';
       },
       error: () => {
         this.username = 'Utilisateur';
@@ -62,125 +74,110 @@ export class Dashboard implements OnInit {
     });
   }
 
-  loadTasks() {
-    const token = this.authService.getToken();
-    if (!token) {
-      this.tasks = [];
+  logout() {
+    this.auth.logout();
+    this.router.navigate(['/login']);
+  }
+
+  createTask() {
+    const title = this.newTaskTitle.trim();
+    this.taskCreationError = '';
+
+    if (!title) {
+      this.taskCreationError = 'Titre requis.';
       return;
     }
-    const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
+    if (this.tasks.some(t => t.label?.toLowerCase() === title.toLowerCase())) {
+      this.taskCreationError = 'Titre déjà utilisé.';
+      return;
+    }
 
-    this.http.get('https://todof.woopear.fr/api/v1/task/user', { headers }).subscribe({
-      next: (response: any) => {
-        console.log('Tasks reçues:', response.data);
-        this.tasks = response.data;
+    this.taskCreationLoading = true;
+    const headers = this.auth.getAuthHeaders();
+
+    this.http.post<{ data: Task }>('https://todof.woopear.fr/api/v1/task', { label: title }, { headers }).subscribe({
+      next: (res) => {
+        if (res.data) {
+          this.tasks.unshift(res.data);
+          this.newTaskTitle = '';
+        }
+        this.taskCreationLoading = false;
       },
       error: () => {
-        this.tasks = [];
+        this.taskCreationError = 'Erreur création tâche.';
+        this.taskCreationLoading = false;
       }
     });
   }
 
-  createTask() {
-    this.taskCreationError.set('');
-
-    const newTitle = this.newTaskTitle.trim();
-
-    if (!newTitle) {
-      this.taskCreationError.set('Le titre de la tâche est obligatoire.');
-      return;
-    }
-
-    const exists = this.tasks.some(task => task.title.toLowerCase() === newTitle.toLowerCase());
-    if (exists) {
-      this.taskCreationError.set('Une tâche avec ce titre existe déjà.');
-      return;
-    }
-
-    this.taskCreationLoading.set(true);
-
-    // Simule création locale, remplacer par appel API si besoin
-    setTimeout(() => {
-      this.tasks.push({ title: newTitle, _id: Math.random().toString(36).slice(2) });
-      this.newTaskTitle = '';
-      this.taskCreationLoading.set(false);
-    }, 500);
-  }
-
-  // Modifier une tâche
-  startEdit(task: any) {
-    console.log('Tâche sélectionnée pour modification :', task);
+  startEdit(task: Task) {
     this.editingTask = task;
-    this.editedTaskTitle = task.title;
-    this.taskCreationError.set('');
+    this.editedTaskTitle = task.label;
+    this.taskCreationError = '';
   }
 
   cancelEdit() {
     this.editingTask = null;
     this.editedTaskTitle = '';
-    this.taskCreationError.set('');
+    this.taskCreationError = '';
   }
 
   updateTask() {
-  if (!this.editingTask) return;
-
-  const updatedTitle = this.editedTaskTitle.trim();
-  if (!updatedTitle) {
-    this.taskCreationError.set("Le titre modifié est obligatoire.");
-    return;
-  }
-
-  // Trouve la tâche dans le tableau par son _id
-  const index = this.tasks.findIndex(t => t._id === this.editingTask._id);
-  if (index === -1) {
-    this.taskCreationError.set("Tâche introuvable.");
-    return;
-  }
-
-  this.tasks[index].title = updatedTitle;
-
-  this.editingTask = null;
-  this.editedTaskTitle = '';
-  this.taskCreationError.set('');
-}
-
-
-deleteTask(task: any) {
-  if (!confirm(`Voulez-vous vraiment supprimer la tâche "${task.title}" ?`)) {
-    return; // Annule si l'utilisateur ne confirme pas
-  }
-
-  const token = this.authService.getToken();
-  if (!token) {
-    console.warn('Token manquant');
-    return;
-  }
-
-  const taskId = task._id;
-  const objectIdPattern = /^[a-f\d]{24}$/i;
-
-  if (!taskId || !objectIdPattern.test(taskId)) {
-    // ID invalide = tâche locale, supprime localement
-    this.tasks = this.tasks.filter(t => t._id !== taskId);
-    console.log('Tâche locale supprimée localement:', task);
-    return;
-  }
-
-  // Sinon suppression via API pour tâches "server"
-  const url = `https://todof.woopear.fr/api/v1/task/${taskId}/user`;
-  const headers = new HttpHeaders({
-    Authorization: `Bearer ${token}`
-  });
-
-  this.http.delete(url, { headers }).subscribe({
-    next: () => {
-      console.log('✅ Tâche supprimée du serveur');
-      this.loadTasks();
-    },
-    error: (err) => {
-      console.error('❌ Erreur suppression tâche:', err);
+    if (!this.editingTask) {
+      this.taskCreationError = 'Aucune tâche à modifier.';
+      return;
     }
-  });
-}
 
+    const newTitle = this.editedTaskTitle.trim();
+    if (!newTitle) {
+      this.taskCreationError = 'Titre requis.';
+      return;
+    }
+
+    if (this.tasks.some(t => t.id !== this.editingTask!.id && t.label?.toLowerCase() === newTitle.toLowerCase())) {
+      this.taskCreationError = 'Titre déjà utilisé.';
+      return;
+    }
+
+    const id = this.editingTask.id;
+    if (!id) {
+      this.taskCreationError = 'ID invalide.';
+      return;
+    }
+
+    this.taskUpdateLoading = true;
+    const headers = this.auth.getAuthHeaders();
+
+    this.http.put(`https://todof.woopear.fr/api/v1/task/${id}/user`, { label: newTitle }, { headers }).subscribe({
+      next: () => {
+        this.editingTask!.label = newTitle;
+        this.cancelEdit();
+        this.taskUpdateLoading = false;
+      },
+      error: () => {
+        this.taskCreationError = 'Erreur mise à jour.';
+        this.taskUpdateLoading = false;
+      }
+    });
+  }
+
+  deleteTask(task: Task) {
+    if (!task || !task.id) {
+      console.error('ID invalide pour suppression', task);
+      return;
+    }
+
+    if (!confirm(`Supprimer la tâche "${task.label}" ?`)) return;
+
+    const headers = this.auth.getAuthHeaders();
+
+    this.http.delete(`https://todof.woopear.fr/api/v1/task/${task.id}/user`, { headers }).subscribe({
+      next: () => {
+        this.tasks = this.tasks.filter(t => t.id !== task.id);
+      },
+      error: (err) => {
+        console.error('Erreur suppression tâche', err);
+      }
+    });
+  }
 }
