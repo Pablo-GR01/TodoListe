@@ -26,7 +26,14 @@
   <div class="md:col-span-2 bg-white rounded-lg shadow-md p-8 flex flex-col">
     <h3 class="text-2xl font-semibold mb-8 text-gray-900 border-b border-gray-300 pb-4">Liste des tâches</h3>
 
-    <ul class="space-y-4 max-h-[500px] overflow-y-auto">
+    <div *ngIf="loadingTasks" class="text-center py-4 text-gray-600 font-medium">
+      Chargement des tâches...
+    </div>
+
+    <ul *ngIf="!loadingTasks" class="space-y-4 max-h-[500px] overflow-y-auto">
+      <li *ngIf="tasks.length === 0" class="text-gray-500 italic">
+        Aucune tâche trouvée.
+      </li>
       <li *ngFor="let task of tasks" class="px-5 py-4 bg-gray-50 rounded-lg shadow-sm hover:bg-green-50 transition flex justify-between items-center">
 
         <div *ngIf="editingTask?.id === task.id; else showTitle" class="flex gap-3 w-full items-center">

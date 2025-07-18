@@ -32,35 +32,18 @@ export class Dashboard implements OnInit {
   editingTask: Task | null = null;
   taskCreationLoading = false;
   taskUpdateLoading = false;
+  loadingTasks = true;  // <-- état de chargement des tâches
 
   tasks: Task[] = [];
-loadingTasks = true;  // <-- nouvelle variable
 
-ngOnInit() {
-  if (!this.auth.getToken()) {
-    this.router.navigate(['/login']);
-    return;
-  }
-  this.loadUserProfile();
-  this.loadTasks();
-}
-
-loadTasks() {
-  this.loadingTasks = true;
-  const headers = this.auth.getAuthHeaders();
-  this.http.get<{ data: Task[] }>('https://todof.woopear.fr/api/v1/task', { headers }).subscribe({
-    next: (res) => {
-      this.tasks = Array.isArray(res.data) ? res.data : [];
-      this.loadingTasks = false;
-    },
-    error: (err) => {
-      console.error('Chargement tâches échoué', err);
-      this.tasks = [];
-      this.loadingTasks = false;
+  ngOnInit() {
+    if (!this.auth.getToken()) {
+      this.router.navigate(['/login']);
+      return;
     }
-  });
-}
-
+    this.loadUserProfile();
+    this.loadTasks();
+  }
 
   loadUserProfile() {
     this.auth.getUserProfile().subscribe({
@@ -74,41 +57,28 @@ loadTasks() {
     });
   }
 
+  loadTasks() {
+    this.loadingTasks = true;
+    const headers = this.auth.getAuthHeaders();
+    this.http.get<{ data: Task[] }>('https://todof.woopear.fr/api/v1/task', { headers }).subscribe({
+      next: (res) => {
+        this.tasks = Array.isArray(res.data) ? res.data : [];
+        this.loadingTasks = false;
+      },
+      error: (err) => {
+        console.error('Chargement tâches échoué', err);
+        this.tasks = [];
+        this.loadingTasks = false;
+      }
+    });
+  }
+
   logout() {
     this.auth.logout();
     this.router.navigate(['/login']);
   }
 
-  createTask() {
-    const title = this.newTaskTitle.trim();
-    this.taskCreationError = '';
-
-    if (!title) {
-      this.taskCreationError = 'Titre requis.';
-      return;
-    }
-    if (this.tasks.some(t => t.label?.toLowerCase() === title.toLowerCase())) {
-      this.taskCreationError = 'Titre déjà utilisé.';
-      return;
-    }
-
-    this.taskCreationLoading = true;
-    const headers = this.auth.getAuthHeaders();
-
-    this.http.post<{ data: Task }>('https://todof.woopear.fr/api/v1/task', { label: title }, { headers }).subscribe({
-      next: (res) => {
-        if (res.data) {
-          this.tasks.unshift(res.data);
-          this.newTaskTitle = '';
-        }
-        this.taskCreationLoading = false;
-      },
-      error: () => {
-        this.taskCreationError = 'Erreur création tâche.';
-        this.taskCreationLoading = false;
-      }
-    });
-  }
+  
 
   startEdit(task: Task) {
     this.editingTask = task;
@@ -122,62 +92,100 @@ loadTasks() {
     this.taskCreationError = '';
   }
 
-  updateTask() {
-    if (!this.editingTask) {
-      this.taskCreationError = 'Aucune tâche à modifier.';
-      return;
+  createTask() {
+  const title = this.newTaskTitle.trim();
+  this.taskCreationError = '';
+
+  if (!title) {
+    this.taskCreationError = 'Titre requis.';
+    return;
+  }
+  if (this.tasks.some(t => t.label?.toLowerCase() === title.toLowerCase())) {
+    this.taskCreationError = 'Titre déjà utilisé.';
+    return;
+  }
+
+  this.taskCreationLoading = true;
+  const headers = this.auth.getAuthHeaders();
+
+  this.http.post<{ data: Task }>('https://todof.woopear.fr/api/v1/task', { label: title }, { headers }).subscribe({
+    next: (res) => {
+      if (res.data) {
+        this.tasks.unshift(res.data);
+        this.newTaskTitle = '';
+      }
+      this.taskCreationLoading = false;
+    },
+    error: () => {
+      this.taskCreationError = 'Erreur création tâche.';
+      this.taskCreationLoading = false;
     }
+  });
+}
 
-    const newTitle = this.editedTaskTitle.trim();
-    if (!newTitle) {
-      this.taskCreationError = 'Titre requis.';
-      return;
-    }
+updateTask() {
+  if (!this.editingTask) {
+    this.taskCreationError = 'Aucune tâche à modifier.';
+    return;
+  }
 
-    if (this.tasks.some(t => t.id !== this.editingTask!.id && t.label?.toLowerCase() === newTitle.toLowerCase())) {
-      this.taskCreationError = 'Titre déjà utilisé.';
-      return;
-    }
+  const newTitle = this.editedTaskTitle.trim();
+  if (!newTitle) {
+    this.taskCreationError = 'Titre requis.';
+    return;
+  }
 
-    const id = this.editingTask.id;
-    if (!id) {
-      this.taskCreationError = 'ID invalide.';
-      return;
-    }
+  if (this.tasks.some(t => t.id !== this.editingTask!.id && t.label?.toLowerCase() === newTitle.toLowerCase())) {
+    this.taskCreationError = 'Titre déjà utilisé.';
+    return;
+  }
 
-    this.taskUpdateLoading = true;
-    const headers = this.auth.getAuthHeaders();
+  const id = this.editingTask.id;
+  if (!id) {
+    this.taskCreationError = 'ID invalide.';
+    return;
+  }
 
-    this.http.put(`https://todof.woopear.fr/api/v1/task/${id}/user`, { label: newTitle }, { headers }).subscribe({
-      next: () => {
+  this.taskUpdateLoading = true;
+  const headers = this.auth.getAuthHeaders();
+
+  this.http.put<{ data: Task }>(`https://todof.woopear.fr/api/v1/task/${id}/label/user`, { label: newTitle }, { headers }).subscribe({
+    next: (res) => {
+      if (res.data) {
+        // Met à jour localement la tâche avec la réponse API
+        const index = this.tasks.findIndex(t => t.id === id);
+        if (index !== -1) this.tasks[index] = res.data;
+      } else {
+        // Fallback : modifie juste le label localement
         this.editingTask!.label = newTitle;
-        this.cancelEdit();
-        this.taskUpdateLoading = false;
-      },
-      error: () => {
-        this.taskCreationError = 'Erreur mise à jour.';
-        this.taskUpdateLoading = false;
       }
-    });
-  }
-
-  deleteTask(task: Task) {
-    if (!task || !task.id) {
-      console.error('ID invalide pour suppression', task);
-      return;
+      this.cancelEdit();
+      this.taskUpdateLoading = false;
+    },
+    error: () => {
+      this.taskCreationError = 'Erreur mise à jour.';
+      this.taskUpdateLoading = false;
     }
+  });
+}
 
-    if (!confirm(`Supprimer la tâche "${task.label}" ?`)) return;
-
-    const headers = this.auth.getAuthHeaders();
-
-    this.http.delete(`https://todof.woopear.fr/api/v1/task/${task.id}/user`, { headers }).subscribe({
-      next: () => {
-        this.tasks = this.tasks.filter(t => t.id !== task.id);
-      },
-      error: (err) => {
-        console.error('Erreur suppression tâche', err);
-      }
-    });
+deleteTask(task: Task) {
+  if (!task || !task.id) {
+    console.error('ID invalide pour suppression', task);
+    return;
   }
+
+  if (!confirm(`Supprimer la tâche "${task.label}" ?`)) return;
+
+  const headers = this.auth.getAuthHeaders();
+
+  this.http.delete(`https://todof.woopear.fr/api/v1/task/${task.id}/user`, { headers }).subscribe({
+    next: () => {
+      this.tasks = this.tasks.filter(t => t.id !== task.id);
+    },
+    error: (err) => {
+      console.error('Erreur suppression tâche', err);
+    }
+  });
+}
 }
